@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
 
 RUN apk add --no-cache python3 make g++ sqlite-dev
 WORKDIR /app
@@ -15,6 +15,14 @@ COPY . .
 RUN npm run postinstall
 RUN npm run build
 
+FROM node:24-alpine AS runtime-dependencies
+
+RUN apk add --no-cache python3 make g++ sqlite-dev
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
 FROM node:24-alpine
 
 RUN apk add --no-cache sqlite-libs
@@ -27,7 +35,7 @@ RUN addgroup -S -g "$APP_GID" app \
 
 COPY --from=builder /app/.output ./.output
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=runtime-dependencies /app/node_modules ./node_modules
 COPY --from=builder /app/scripts ./scripts
 
 RUN chmod +x /app/scripts/docker-entrypoint.sh \
