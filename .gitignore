@@ -24,4 +24,4 @@ logs
 !.env.example
 
 # Runtime data (SQLite database and uploaded media)
-data
+/data
