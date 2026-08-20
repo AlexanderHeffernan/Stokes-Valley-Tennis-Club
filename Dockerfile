@@ -1,9 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache python3 make g++ sqlite-dev
 WORKDIR /app
+
+ARG NUXT_PUBLIC_SITE_URL=https://stokesvalleytennisclub.alexheffernan.dev
+ENV NUXT_PUBLIC_SITE_URL=$NUXT_PUBLIC_SITE_URL
 
 COPY package*.json ./
 RUN npm ci
@@ -12,7 +15,7 @@ COPY . .
 RUN npm run postinstall
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache sqlite-libs
 WORKDIR /app
