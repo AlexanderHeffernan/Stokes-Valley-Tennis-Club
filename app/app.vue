@@ -1,9 +1,9 @@
 <template>
-  <main>
+  <div>
     <NuxtRouteAnnouncer />
-    <h1>Stokes Valley Tennis Club</h1>
-    <p>The new club website is getting ready.</p>
-  </main>
+    <AppHeader />
+    <main />
+  </div>
 </template>
 
 <script setup lang="ts">
