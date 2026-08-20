@@ -11,7 +11,7 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@nuxtjs/sitemap": "^7.6.0",
+    "@nuxtjs/sitemap": "^8.3.4",
     "@phosphor-icons/vue": "^2.2.1",
     "better-sqlite3": "^13.0.3",
     "nuxt": "^4.5.2",
