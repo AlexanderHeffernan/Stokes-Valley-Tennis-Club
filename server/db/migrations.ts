@@ -4,6 +4,18 @@ export interface Migration {
   sql: string
 }
 
+const defaultHomeClubDaysJson = JSON.stringify({
+  heading: 'Find your time to play',
+  introduction: 'There is a regular session for every age, stage and style of play.',
+  daysJson: JSON.stringify([
+    { name: 'Junior Club Day', schedule: 'Saturdays, 9am–12pm', note: 'For ages 5–12 and older junior players during the summer season.', linkUrl: '/juniors' },
+    { name: 'Senior Club Day', schedule: 'Saturdays, 1:30pm–5pm', note: 'Social tennis for senior members and prospective players.', linkUrl: '/seniors' },
+    { name: 'Midweek Tennis', schedule: 'Tuesdays, 9am–11:30am', note: 'Social doubles followed by morning tea during the summer season.', linkUrl: '/seniors' },
+    { name: 'Monday Night Tennis', schedule: 'Mondays from 7pm', note: 'An evening opportunity to get on court and enjoy a hit.', linkUrl: '/seniors' },
+    { name: 'Wednesday Night Tennis', schedule: 'Wednesdays from 7pm', note: 'Midweek evening tennis for club members.', linkUrl: '/seniors' }
+  ])
+}).replaceAll("'", "''")
+
 export const migrations: Migration[] = [
   {
     version: 1,
@@ -53,11 +65,11 @@ export const migrations: Migration[] = [
         published_headline_1, published_headline_2, published_subheading, published_image_url
       ) VALUES (
         1,
-        'More than a club.', 'A place to play.',
-        'Friendly people. Great tennis.\nAll ages and abilities welcome.',
+        'Tennis for everyone.', 'In Stokes Valley.',
+        'A friendly local club for juniors, seniors, families and players of every ability.',
         '',
-        'More than a club.', 'A place to play.',
-        'Friendly people. Great tennis.\nAll ages and abilities welcome.',
+        'Tennis for everyone.', 'In Stokes Valley.',
+        'A friendly local club for juniors, seniors, families and players of every ability.',
         ''
       );
 
@@ -99,10 +111,10 @@ export const migrations: Migration[] = [
       );
 
       INSERT INTO home_highlights (id, content_json) VALUES (1, '{
-        "item1Icon":"trophy","item1Heading":"Great Facilities","item1Text":"Quality courts, practice facilities and a welcoming clubhouse.","item1Color":"#00251e",
-        "item2Icon":"users-three","item2Heading":"All Ages Welcome","item2Text":"Juniors, seniors, families and everyone in between.","item2Color":"#dadf3c",
-        "item3Icon":"tennis-ball","item3Heading":"Play Your Way","item3Text":"Social tennis, coaching, interclub and tournaments.","item3Color":"#d42e00",
-        "item4Icon":"heart","item4Heading":"Community Focused","item4Text":"A welcoming club at the heart of Stokes Valley.","item4Color":"#dadf3c"
+        "item1Icon":"map-pin","item1Heading":"Great Facilities","item1Text":"Four AstroTurf courts, including two newer courts with lights, plus clubrooms and public courts.","item1Color":"#00251e",
+        "item2Icon":"users-three","item2Heading":"All Ages Welcome","item2Text":"Tennis for juniors, seniors, families, midweek players and everyone in between.","item2Color":"#dadf3c",
+        "item3Icon":"tennis-ball","item3Heading":"Play Your Way","item3Text":"Social tennis, professional coaching, interclub competition and casual club days.","item3Color":"#d42e00",
+        "item4Icon":"heart","item4Heading":"Community Focused","item4Text":"A friendly, non-profit club serving Stokes Valley and the wider community since 1951.","item4Color":"#dadf3c"
       }');
     `
   },
@@ -120,8 +132,8 @@ export const migrations: Migration[] = [
       INSERT INTO home_explore (id, content_json) VALUES (1, '{
         "card1ImageUrl":"","card1Icon":"users-three","card1Heading":"Junior Tennis","card1Value":"Coaching, interclub and fun for young players.","card1LinkText":"Explore juniors","card1LinkUrl":"/juniors",
         "card2ImageUrl":"","card2Icon":"tennis-ball","card2Heading":"Senior Tennis","card2Value":"Social and competitive tennis for every level.","card2LinkText":"Explore seniors","card2LinkUrl":"/seniors",
-        "card3ImageUrl":"","card3Icon":"heart","card3Heading":"Join the Club","card3Value":"Become part of our friendly tennis community.","card3LinkText":"Membership information","card3LinkUrl":"/join",
-        "card4ImageUrl":"","card4Icon":"map-pin","card4Heading":"Visit Us","card4Value":"Find our courts in the heart of Stokes Valley.","card4LinkText":"Contact the club","card4LinkUrl":"/contact"
+        "card3ImageUrl":"","card3Icon":"heart","card3Heading":"Membership","card3Value":"Options for juniors, seniors, students and midweek players.","card3LinkText":"Membership information","card3LinkUrl":"/join",
+        "card4ImageUrl":"","card4Icon":"calendar","card4Heading":"Club Days","card4Value":"Find a regular social or coaching session that works for you.","card4LinkText":"See club days","card4LinkUrl":"/about#club-days"
       }');
     `
   },
@@ -159,6 +171,43 @@ export const migrations: Migration[] = [
         "ctaHeading":"Come have a hit!",
         "ctaText":"New members are always welcome. Get in touch or come along for a hit."
       }');
+    `
+  },
+  {
+    version: 7,
+    name: 'add_home_club_days',
+    sql: `
+      CREATE TABLE home_club_days (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        content_json TEXT NOT NULL,
+        published_by INTEGER REFERENCES users(id),
+        published_at TEXT
+      );
+
+      INSERT INTO home_club_days (id, content_json)
+      VALUES (1, '${defaultHomeClubDaysJson}');
+    `
+  },
+  {
+    version: 8,
+    name: 'repair_home_club_days_default_json',
+    sql: `
+      UPDATE home_club_days
+      SET content_json = '${defaultHomeClubDaysJson}'
+      WHERE NOT json_valid(content_json);
+    `
+  },
+  {
+    version: 9,
+    name: 'shorten_default_home_hero_heading',
+    sql: `
+      UPDATE home_hero
+      SET draft_headline_2 = 'In Stokes Valley.'
+      WHERE draft_headline_2 = 'Right here in Stokes Valley.';
+
+      UPDATE home_hero
+      SET published_headline_2 = 'In Stokes Valley.'
+      WHERE published_headline_2 = 'Right here in Stokes Valley.';
     `
   }
 ]

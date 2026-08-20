@@ -241,13 +241,13 @@ watch(activeEditors, (editors) => {
           >
             <div class="editor-group__fields">
               <component
-                :is="field.type === 'sponsors' ? 'div' : 'label'"
+                :is="field.type === 'sponsors' || field.type === 'club-days' ? 'div' : 'label'"
                 v-for="field in editor.fields"
                 :key="field.key"
                 class="admin-field"
                 :class="{ 'admin-sidebar__upload': field.type === 'image' }"
               >
-                <template v-if="field.type !== 'sponsors'">{{ field.label }}</template>
+                <template v-if="field.type !== 'sponsors' && field.type !== 'club-days'">{{ field.label }}</template>
                 <div v-if="field.type === 'sponsors'" class="sponsor-editor">
                   <article v-for="(sponsor, index) in sponsorItems(editor.resource, field.key)" :key="index" class="sponsor-editor__item">
                     <div class="sponsor-editor__heading">
@@ -276,6 +276,11 @@ watch(activeEditors, (editors) => {
                   </article>
                   <button class="sponsor-editor__add" type="button" @click="addSponsor(editor.resource, field.key)">Add sponsor</button>
                 </div>
+                <AdminClubDaysField
+                  v-else-if="field.type === 'club-days'"
+                  :model-value="editorContent(editor.resource)[field.key] || '[]'"
+                  @update:model-value="editorContent(editor.resource)[field.key] = $event"
+                />
                 <textarea
                   v-else-if="field.type === 'textarea'"
                   v-model="editorContent(editor.resource)[field.key]"
