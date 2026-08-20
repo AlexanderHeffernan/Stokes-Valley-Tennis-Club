@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HomeHeroEditorData } from '#shared/types/home-hero'
+import type { HomeSponsor } from '#shared/types/home-sponsors'
 import { getPageEditors } from '~/data/page-editors'
 
 interface SessionData {
@@ -122,6 +123,71 @@ const uploadImage = async (event: Event, resource: string, fieldKey: string) => 
   }
 }
 
+const sponsorItems = (resource: string, fieldKey: string): HomeSponsor[] => {
+  try {
+    const items = JSON.parse(editorContent(resource)[fieldKey] || '[]')
+    return Array.isArray(items) ? items : []
+  } catch {
+    return []
+  }
+}
+
+const setSponsorItems = (resource: string, fieldKey: string, items: HomeSponsor[]) => {
+  const content = previews.value[resource]
+  if (content) content[fieldKey] = JSON.stringify(items)
+}
+
+const updateSponsor = (resource: string, fieldKey: string, index: number, key: keyof HomeSponsor, value: string) => {
+  const items = sponsorItems(resource, fieldKey).map(item => ({ ...item }))
+  if (!items[index]) return
+  items[index][key] = value
+  setSponsorItems(resource, fieldKey, items)
+}
+
+const addSponsor = (resource: string, fieldKey: string) => {
+  const items = sponsorItems(resource, fieldKey)
+  setSponsorItems(resource, fieldKey, [
+    ...items,
+    { name: '', imageUrl: '', websiteUrl: '', message: '' }
+  ])
+}
+
+const removeSponsor = (resource: string, fieldKey: string, index: number) => {
+  const sponsor = sponsorItems(resource, fieldKey)[index]
+  if (!sponsor) return
+  const hasContent = Boolean(sponsor.name || sponsor.imageUrl || sponsor.websiteUrl || sponsor.message)
+  if (hasContent && !window.confirm(`Remove ${sponsor.name || `sponsor ${index + 1}`}? This cannot be undone after publishing.`)) return
+  setSponsorItems(
+    resource,
+    fieldKey,
+    sponsorItems(resource, fieldKey).filter((_, itemIndex) => itemIndex !== index)
+  )
+}
+
+const uploadSponsorLogo = async (event: Event, resource: string, fieldKey: string, index: number) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  isUploading.value = true
+  errorMessage.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    const result = await authenticatedRequest<{ url: string }>('/api/admin/upload', {
+      method: 'POST',
+      body: formData
+    })
+    updateSponsor(resource, fieldKey, index, 'imageUrl', result.url)
+    statusMessage.value = 'Sponsor logo ready to publish'
+  } catch (error: unknown) {
+    const response = error as { data?: { statusMessage?: string } }
+    errorMessage.value = response.data?.statusMessage || 'Unable to upload the logo'
+  } finally {
+    isUploading.value = false
+    input.value = ''
+  }
+}
+
 const signOut = async () => {
   if (hasAnyChanges.value && !window.confirm('You have unpublished changes. Sign out and discard them?')) return
   await authenticatedRequest('/api/admin/logout', { method: 'POST' })
@@ -174,10 +240,44 @@ watch(activeEditors, (editors) => {
             :class="{ 'editor-group__wrap--open': isGroupOpen(editor.resource) }"
           >
             <div class="editor-group__fields">
-              <label v-for="field in editor.fields" :key="field.key" :class="{ 'admin-sidebar__upload': field.type === 'image' }">
-                {{ field.label }}
+              <component
+                :is="field.type === 'sponsors' ? 'div' : 'label'"
+                v-for="field in editor.fields"
+                :key="field.key"
+                class="admin-field"
+                :class="{ 'admin-sidebar__upload': field.type === 'image' }"
+              >
+                <template v-if="field.type !== 'sponsors'">{{ field.label }}</template>
+                <div v-if="field.type === 'sponsors'" class="sponsor-editor">
+                  <article v-for="(sponsor, index) in sponsorItems(editor.resource, field.key)" :key="index" class="sponsor-editor__item">
+                    <div class="sponsor-editor__heading">
+                      <strong>Sponsor {{ index + 1 }}</strong>
+                      <button type="button" @click="removeSponsor(editor.resource, field.key, index)">Remove</button>
+                    </div>
+                    <img v-if="sponsor.imageUrl" :src="sponsor.imageUrl" :alt="sponsor.name || `Sponsor ${index + 1} logo`">
+                    <label>
+                      Sponsor name
+                      <input :value="sponsor.name" maxlength="100" @input="updateSponsor(editor.resource, field.key, index, 'name', ($event.target as HTMLInputElement).value)">
+                    </label>
+                    <label>
+                      Website (optional)
+                      <input type="url" :value="sponsor.websiteUrl" maxlength="500" @input="updateSponsor(editor.resource, field.key, index, 'websiteUrl', ($event.target as HTMLInputElement).value)">
+                    </label>
+                    <label>
+                      Short write-up (optional)
+                      <textarea :value="sponsor.message" maxlength="240" rows="3" @input="updateSponsor(editor.resource, field.key, index, 'message', ($event.target as HTMLTextAreaElement).value)" />
+                    </label>
+                    <label>
+                      Logo
+                      <input class="admin-sidebar__file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="isUploading" @change="uploadSponsorLogo($event, editor.resource, field.key, index)">
+                      <span class="admin-sidebar__upload-button">{{ sponsor.imageUrl ? 'Replace logo' : 'Upload logo' }}</span>
+                      <span v-if="sponsor.imageUrl">Current logo uploaded</span>
+                    </label>
+                  </article>
+                  <button class="sponsor-editor__add" type="button" @click="addSponsor(editor.resource, field.key)">Add sponsor</button>
+                </div>
                 <textarea
-                  v-if="field.type === 'textarea'"
+                  v-else-if="field.type === 'textarea'"
                   v-model="editorContent(editor.resource)[field.key]"
                   :maxlength="field.maxLength"
                   :rows="field.rows || 4"
@@ -193,13 +293,17 @@ watch(activeEditors, (editors) => {
                 >
                 <input
                   v-else
+                  class="admin-sidebar__file-input"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   :disabled="isUploading"
                   @change="uploadImage($event, editor.resource, field.key)"
                 >
-                <span v-if="field.help">{{ isUploading ? 'Uploading…' : field.help }}</span>
-              </label>
+                <img v-if="field.type === 'image' && editorContent(editor.resource)[field.key]" class="admin-sidebar__image-preview" :src="editorContent(editor.resource)[field.key]" alt="Current uploaded image">
+                <span v-if="field.type === 'image'" class="admin-sidebar__upload-button">{{ editorContent(editor.resource)[field.key] ? 'Replace image' : 'Upload image' }}</span>
+                <span v-if="field.type === 'image' && editorContent(editor.resource)[field.key]">Current image uploaded</span>
+                <span v-else-if="field.help">{{ isUploading ? 'Uploading…' : field.help }}</span>
+              </component>
 
               <section v-for="group in editor.groups" :key="group.key" class="editor-group editor-group--nested">
                 <button
@@ -218,7 +322,7 @@ watch(activeEditors, (editors) => {
                   :class="{ 'editor-group__wrap--open': isGroupOpen(nestedGroupKey(editor.resource, group.key)) }"
                 >
                   <div class="editor-group__fields">
-                    <label v-for="field in group.fields" :key="field.key">
+                    <label v-for="field in group.fields" :key="field.key" class="admin-field" :class="{ 'admin-sidebar__upload': field.type === 'image' }">
                       {{ field.label }}
                       <textarea
                         v-if="field.type === 'textarea'"
@@ -237,12 +341,16 @@ watch(activeEditors, (editors) => {
                       >
                       <input
                         v-else
+                        class="admin-sidebar__file-input"
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
                         :disabled="isUploading"
                         @change="uploadImage($event, editor.resource, field.key)"
                       >
-                      <span v-if="field.help">{{ isUploading && field.type === 'image' ? 'Uploading…' : field.help }}</span>
+                      <img v-if="field.type === 'image' && editorContent(editor.resource)[field.key]" class="admin-sidebar__image-preview" :src="editorContent(editor.resource)[field.key]" alt="Current uploaded image">
+                      <span v-if="field.type === 'image'" class="admin-sidebar__upload-button">{{ editorContent(editor.resource)[field.key] ? 'Replace image' : 'Upload image' }}</span>
+                      <span v-if="field.type === 'image' && editorContent(editor.resource)[field.key]">Current image uploaded</span>
+                      <span v-else-if="field.help">{{ isUploading && field.type === 'image' ? 'Uploading…' : field.help }}</span>
                     </label>
                   </div>
                 </div>
@@ -450,7 +558,8 @@ watch(activeEditors, (editors) => {
   padding-top: 1rem;
 }
 
-.admin-sidebar__body label {
+.admin-sidebar__body label,
+.admin-sidebar__body .admin-field {
   display: grid;
   font-size: 0.78rem;
   font-weight: 700;
@@ -484,6 +593,84 @@ watch(activeEditors, (editors) => {
   color: #67726f;
   font-size: 0.72rem;
   font-weight: 400;
+}
+
+.admin-sidebar__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.admin-sidebar__image-preview {
+  width: 100%;
+  height: 92px;
+  padding: 0.35rem;
+  border: 1px solid #dfe5e3;
+  background: #f8faf9;
+  object-fit: contain;
+}
+
+.admin-sidebar__upload-button {
+  display: grid;
+  min-height: 40px;
+  border: 1px solid var(--color-primary);
+  border-radius: 3px;
+  color: var(--color-primary) !important;
+  cursor: pointer;
+  font-weight: 700 !important;
+  place-items: center;
+}
+
+.sponsor-editor {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sponsor-editor__item {
+  display: grid;
+  padding: 0.75rem;
+  border: 1px solid #dfe5e3;
+  border-radius: 3px;
+  background: #f8faf9;
+  gap: 0.75rem;
+}
+
+.sponsor-editor__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sponsor-editor__heading button {
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sponsor-editor__item img {
+  width: 100%;
+  height: 72px;
+  padding: 0.5rem;
+  border: 1px solid #e0e5e3;
+  background: white;
+  object-fit: contain;
+}
+
+.sponsor-editor__add {
+  min-height: 40px;
+  border: 1px solid var(--color-primary);
+  border-radius: 3px;
+  background: white;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .admin-sidebar__message {

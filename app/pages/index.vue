@@ -2,10 +2,12 @@
 import type { HomeHeroContent } from '#shared/types/home-hero'
 import { fieldsToHomeHighlights, type HomeHighlightsContent } from '#shared/types/home-highlights'
 import { fieldsToHomeExplore, type HomeExploreContent } from '#shared/types/home-explore'
+import { fieldsToHomeSponsors, type HomeSponsorsContent } from '#shared/types/home-sponsors'
 
 const { data: hero } = await useFetch<HomeHeroContent>('/api/content/home-hero')
 const { data: highlights } = await useFetch<HomeHighlightsContent>('/api/content/home-highlights')
 const { data: explore } = await useFetch<HomeExploreContent>('/api/content/home-explore')
+const { data: sponsors } = await useFetch<HomeSponsorsContent>('/api/content/home-sponsors')
 const previews = useState<Record<string, Record<string, string>>>('page-previews', () => ({}))
 const displayedHero = computed(() => (previews.value['home-hero'] as unknown as HomeHeroContent) || hero.value)
 const displayedHighlights = computed(() => (
@@ -17,6 +19,11 @@ const displayedExplore = computed(() => (
   previews.value['home-explore']
     ? fieldsToHomeExplore(previews.value['home-explore'])
     : explore.value
+))
+const displayedSponsors = computed(() => (
+  previews.value['home-sponsors']
+    ? fieldsToHomeSponsors(previews.value['home-sponsors'])
+    : sponsors.value
 ))
 
 useSeoMeta({
@@ -30,4 +37,5 @@ useSeoMeta({
   <HomeHighlights v-if="displayedHighlights" :content="displayedHighlights" />
   <HomeExplore v-if="displayedExplore" :content="displayedExplore" />
   <HomeNewsPreview />
+  <HomeSponsors v-if="displayedSponsors" :content="displayedSponsors" />
 </template>

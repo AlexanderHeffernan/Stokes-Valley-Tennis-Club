@@ -124,5 +124,20 @@ export const migrations: Migration[] = [
         "card4ImageUrl":"","card4Icon":"map-pin","card4Heading":"Visit Us","card4Value":"Find our courts in the heart of Stokes Valley.","card4LinkText":"Contact the club","card4LinkUrl":"/contact"
       }');
     `
+  },
+  {
+    version: 5,
+    name: 'add_home_sponsors',
+    sql: `
+      CREATE TABLE home_sponsors (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        content_json TEXT NOT NULL,
+        published_by INTEGER REFERENCES users(id),
+        published_at TEXT
+      );
+
+      INSERT INTO home_sponsors (id, content_json)
+      VALUES (1, '{"itemsJson":"[]"}');
+    `
   }
 ]
