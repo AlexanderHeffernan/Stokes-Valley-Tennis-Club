@@ -209,5 +209,23 @@ export const migrations: Migration[] = [
       SET published_headline_2 = 'In Stokes Valley.'
       WHERE published_headline_2 = 'Right here in Stokes Valley.';
     `
+  },
+  {
+    version: 10,
+    name: 'add_durable_login_throttling',
+    sql: `
+      CREATE TABLE login_throttles (
+        scope_key TEXT PRIMARY KEY,
+        failed_count INTEGER NOT NULL,
+        first_failed_at TEXT NOT NULL,
+        last_failed_at TEXT NOT NULL,
+        locked_until TEXT
+      );
+
+      CREATE INDEX login_throttles_last_failed_idx ON login_throttles(last_failed_at);
+      DELETE FROM sessions
+      WHERE id NOT IN (SELECT MAX(id) FROM sessions GROUP BY user_id);
+      CREATE UNIQUE INDEX sessions_one_per_user_idx ON sessions(user_id);
+    `
   }
 ]

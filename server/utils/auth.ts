@@ -28,9 +28,12 @@ export function createSession(event: H3Event, userId: number) {
   const csrfToken = randomBytes(24).toString('base64url')
   const expiresAt = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000).toISOString()
 
-  db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(new Date().toISOString())
-  db.prepare('INSERT INTO sessions (token_hash, csrf_token, user_id, expires_at) VALUES (?, ?, ?, ?)')
-    .run(hashToken(token), csrfToken, userId, expiresAt)
+  db.transaction(() => {
+    db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(new Date().toISOString())
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId)
+    db.prepare('INSERT INTO sessions (token_hash, csrf_token, user_id, expires_at) VALUES (?, ?, ?, ?)')
+      .run(hashToken(token), csrfToken, userId, expiresAt)
+  })()
 
   setCookie(event, SESSION_COOKIE, token, {
     httpOnly: true,
