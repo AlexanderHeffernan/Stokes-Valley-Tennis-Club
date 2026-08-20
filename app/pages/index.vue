@@ -29,4 +29,5 @@ useSeoMeta({
   <HomeHero v-if="displayedHero" :content="displayedHero" />
   <HomeHighlights v-if="displayedHighlights" :content="displayedHighlights" />
   <HomeExplore v-if="displayedExplore" :content="displayedExplore" />
+  <HomeNewsPreview />
 </template>
