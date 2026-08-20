@@ -105,5 +105,24 @@ export const migrations: Migration[] = [
         "item4Icon":"heart","item4Heading":"Community Focused","item4Text":"A welcoming club at the heart of Stokes Valley.","item4Color":"#dadf3c"
       }');
     `
+  },
+  {
+    version: 4,
+    name: 'add_home_explore',
+    sql: `
+      CREATE TABLE home_explore (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        content_json TEXT NOT NULL,
+        published_by INTEGER REFERENCES users(id),
+        published_at TEXT
+      );
+
+      INSERT INTO home_explore (id, content_json) VALUES (1, '{
+        "card1ImageUrl":"","card1Icon":"users-three","card1Heading":"Junior Tennis","card1Value":"Coaching, interclub and fun for young players.","card1LinkText":"Explore juniors","card1LinkUrl":"/juniors",
+        "card2ImageUrl":"","card2Icon":"tennis-ball","card2Heading":"Senior Tennis","card2Value":"Social and competitive tennis for every level.","card2LinkText":"Explore seniors","card2LinkUrl":"/seniors",
+        "card3ImageUrl":"","card3Icon":"heart","card3Heading":"Join the Club","card3Value":"Become part of our friendly tennis community.","card3LinkText":"Membership information","card3LinkUrl":"/join",
+        "card4ImageUrl":"","card4Icon":"map-pin","card4Heading":"Visit Us","card4Value":"Find our courts in the heart of Stokes Valley.","card4LinkText":"Contact the club","card4LinkUrl":"/contact"
+      }');
+    `
   }
 ]

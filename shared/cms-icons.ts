@@ -1,0 +1,33 @@
+export const cmsIconOptions = [
+  { label: 'Tennis ball', value: 'tennis-ball' },
+  { label: 'Active player', value: 'person-simple-run' },
+  { label: 'People', value: 'users-three' },
+  { label: 'Person', value: 'user' },
+  { label: 'Junior / student', value: 'student' },
+  { label: 'Trophy', value: 'trophy' },
+  { label: 'Medal', value: 'medal' },
+  { label: 'Heart', value: 'heart' },
+  { label: 'Handshake', value: 'handshake' },
+  { label: 'Happy face', value: 'smiley' },
+  { label: 'Star', value: 'star' },
+  { label: 'Location', value: 'map-pin' },
+  { label: 'Home / clubhouse', value: 'house' },
+  { label: 'Calendar', value: 'calendar' },
+  { label: 'Clock', value: 'clock' },
+  { label: 'News', value: 'newspaper' },
+  { label: 'Announcement', value: 'megaphone' },
+  { label: 'Email', value: 'envelope' },
+  { label: 'Phone', value: 'phone' },
+  { label: 'Chat', value: 'chat-circle' },
+  { label: 'Information', value: 'info' },
+  { label: 'Camera', value: 'camera' },
+  { label: 'Flag', value: 'flag' },
+  { label: 'Confirmed', value: 'check-circle' },
+  { label: 'Energy', value: 'lightning' },
+  { label: 'Sunny', value: 'sun' },
+  { label: 'Safe and trusted', value: 'shield-check' },
+  { label: 'Ticket / event', value: 'ticket' },
+  { label: 'Price / fees', value: 'currency-dollar' }
+] as const
+
+export const cmsIconNames = new Set<string>(cmsIconOptions.map(option => option.value))

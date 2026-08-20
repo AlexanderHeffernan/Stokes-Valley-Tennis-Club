@@ -1,10 +1,6 @@
 import { fieldsToHomeHighlights, type HomeHighlightsFields } from '#shared/types/home-highlights'
+import { cmsIconNames } from '#shared/cms-icons'
 import { db } from './db'
-
-const iconNames = new Set([
-  'heart', 'handshake', 'map-pin', 'person-simple-run',
-  'star', 'tennis-ball', 'trophy', 'users-three'
-])
 
 export function getHomeHighlightsFields(): HomeHighlightsFields {
   const row = db.prepare('SELECT content_json FROM home_highlights WHERE id = 1').get() as { content_json: string }
@@ -28,7 +24,7 @@ export function validateHomeHighlights(input: unknown): HomeHighlightsFields {
     const text = value[`item${number}Text`]
     const color = value[`item${number}Color`]
 
-    if (typeof icon !== 'string' || !iconNames.has(icon)) {
+    if (typeof icon !== 'string' || !cmsIconNames.has(icon)) {
       throw createError({ statusCode: 400, statusMessage: `Invalid icon for item ${number}` })
     }
     if (typeof heading !== 'string' || !heading.trim() || heading.length > 60) {

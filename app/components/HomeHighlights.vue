@@ -1,31 +1,11 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import {
-  PhHandshake,
-  PhHeart,
-  PhMapPin,
-  PhPersonSimpleRun,
-  PhStar,
-  PhTennisBall,
-  PhTrophy,
-  PhUsersThree
-} from '@phosphor-icons/vue'
+import { PhStar } from '@phosphor-icons/vue'
 import type { HomeHighlightsContent } from '#shared/types/home-highlights'
+import { cmsIconComponents } from '~/data/cms-icon-components'
 
 defineProps<{
   content: HomeHighlightsContent
 }>()
-
-const icons: Record<string, Component> = {
-  handshake: PhHandshake,
-  heart: PhHeart,
-  'map-pin': PhMapPin,
-  'person-simple-run': PhPersonSimpleRun,
-  star: PhStar,
-  'tennis-ball': PhTennisBall,
-  trophy: PhTrophy,
-  'users-three': PhUsersThree
-}
 
 const iconColor = (background: string) => {
   const value = background.replace('#', '')
@@ -44,7 +24,7 @@ const iconColor = (background: string) => {
           class="highlight__icon"
           :style="{ backgroundColor: item.color, color: iconColor(item.color) }"
         >
-          <component :is="icons[item.icon] || PhStar" :size="31" weight="regular" />
+          <component :is="cmsIconComponents[item.icon] || PhStar" :size="31" weight="regular" />
         </div>
         <div>
           <h2>{{ item.heading }}</h2>

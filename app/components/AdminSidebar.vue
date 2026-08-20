@@ -230,11 +230,19 @@ watch(activeEditors, (editors) => {
                         <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
                       </select>
                       <input
-                        v-else
+                        v-else-if="field.type === 'text' || field.type === 'color'"
                         v-model="editorContent(editor.resource)[field.key]"
                         :type="field.type"
                         :maxlength="field.maxLength"
                       >
+                      <input
+                        v-else
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        :disabled="isUploading"
+                        @change="uploadImage($event, editor.resource, field.key)"
+                      >
+                      <span v-if="field.help">{{ isUploading && field.type === 'image' ? 'Uploading…' : field.help }}</span>
                     </label>
                   </div>
                 </div>
