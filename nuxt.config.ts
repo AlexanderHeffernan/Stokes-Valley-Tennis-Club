@@ -7,6 +7,9 @@ export default defineNuxtConfig({
     url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     name: 'Stokes Valley Tennis Club'
   },
+  sitemap: {
+    exclude: ['/admin', '/admin/**']
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'en-NZ' },
