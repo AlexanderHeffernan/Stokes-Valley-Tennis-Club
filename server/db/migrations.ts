@@ -139,5 +139,26 @@ export const migrations: Migration[] = [
       INSERT INTO home_sponsors (id, content_json)
       VALUES (1, '{"itemsJson":"[]"}');
     `
+  },
+  {
+    version: 6,
+    name: 'add_site_footer',
+    sql: `
+      CREATE TABLE site_footer (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        content_json TEXT NOT NULL,
+        published_by INTEGER REFERENCES users(id),
+        published_at TEXT
+      );
+
+      INSERT INTO site_footer (id, content_json) VALUES (1, '{
+        "address":"Stokes Valley, Lower Hutt",
+        "email":"",
+        "phone":"",
+        "facebookUrl":"",
+        "ctaHeading":"Come have a hit!",
+        "ctaText":"New members are always welcome. Get in touch or come along for a hit."
+      }');
+    `
   }
 ]

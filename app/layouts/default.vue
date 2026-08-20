@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import type { SiteFooterContent } from '#shared/types/site-footer'
+
 const adminSession = useState<object | null>('admin-session', () => null)
 const adminPanelOpen = useState('admin-panel-open', () => true)
 const previewWidth = useState<'desktop' | 'mobile'>('admin-preview-width', () => 'desktop')
+const previews = useState<Record<string, Record<string, string>>>('page-previews', () => ({}))
+const { data: footer } = await useFetch<SiteFooterContent>('/api/content/site-footer')
+const displayedFooter = computed(() => (
+  (previews.value['site-footer'] as unknown as SiteFooterContent) || footer.value
+))
 </script>
 
 <template>
@@ -15,6 +22,7 @@ const previewWidth = useState<'desktop' | 'mobile'>('admin-preview-width', () =>
       <main>
         <slot />
       </main>
+      <AppFooter v-if="displayedFooter" :content="displayedFooter" />
     </div>
     <AdminSidebar />
   </div>
