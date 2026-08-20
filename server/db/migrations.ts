@@ -86,5 +86,24 @@ export const migrations: Migration[] = [
       WHERE draft_image_url = '/images/hero-placeholder.svg'
         OR published_image_url = '/images/hero-placeholder.svg';
     `
+  },
+  {
+    version: 3,
+    name: 'add_home_highlights',
+    sql: `
+      CREATE TABLE home_highlights (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        content_json TEXT NOT NULL,
+        published_by INTEGER REFERENCES users(id),
+        published_at TEXT
+      );
+
+      INSERT INTO home_highlights (id, content_json) VALUES (1, '{
+        "item1Icon":"trophy","item1Heading":"Great Facilities","item1Text":"Quality courts, practice facilities and a welcoming clubhouse.","item1Color":"#00251e",
+        "item2Icon":"users-three","item2Heading":"All Ages Welcome","item2Text":"Juniors, seniors, families and everyone in between.","item2Color":"#dadf3c",
+        "item3Icon":"tennis-ball","item3Heading":"Play Your Way","item3Text":"Social tennis, coaching, interclub and tournaments.","item3Color":"#d42e00",
+        "item4Icon":"heart","item4Heading":"Community Focused","item4Text":"A welcoming club at the heart of Stokes Valley.","item4Color":"#dadf3c"
+      }');
+    `
   }
 ]

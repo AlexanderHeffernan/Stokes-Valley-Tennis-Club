@@ -26,6 +26,12 @@ const previewWidth = useState<'desktop' | 'mobile'>('admin-preview-width', () =>
   background: #e8eceb;
 }
 
+.site-workspace--editing {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .site-canvas {
   width: 100%;
   min-height: 100vh;
@@ -38,14 +44,18 @@ const previewWidth = useState<'desktop' | 'mobile'>('admin-preview-width', () =>
 
 .site-workspace--editing .site-canvas {
   width: calc(100% - 380px);
+  height: 100dvh;
+  min-height: 0;
   margin-left: 0;
+  overflow-y: auto;
   box-shadow: 10px 0 35px rgb(0 37 30 / 14%);
 }
 
 .site-workspace--editing .site-canvas--mobile {
   width: min(390px, calc(100% - 380px));
   margin-left: 0;
-  overflow: clip;
+  overflow-x: hidden;
+  overflow-y: auto;
   --header-height: 80px;
 }
 

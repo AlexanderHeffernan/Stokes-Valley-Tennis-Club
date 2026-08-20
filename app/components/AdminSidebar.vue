@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { HomeHeroEditorData } from '#shared/types/home-hero'
-import { getPageEditor } from '~/data/page-editors'
+import { getPageEditors } from '~/data/page-editors'
 
 interface SessionData {
   csrfToken: string
@@ -18,16 +18,27 @@ const isPublishing = ref(false)
 const isUploading = ref(false)
 const statusMessage = ref('')
 const errorMessage = ref('')
+const openGroups = ref<string[]>([])
 
-const activeEditor = computed(() => getPageEditor(route.path))
-const activeContent = computed(() => activeEditor.value ? previews.value[activeEditor.value.resource] : undefined)
-const hasChanges = computed(() => Boolean(
-  activeEditor.value && activeContent.value
-  && JSON.stringify(activeContent.value) !== JSON.stringify(savedContent.value[activeEditor.value.resource])
+const activeEditors = computed(() => getPageEditors(route.path))
+const hasActiveContent = computed(() => (
+  activeEditors.value.length > 0 && activeEditors.value.every(editor => previews.value[editor.resource])
 ))
+const hasChanges = computed(() => activeEditors.value.some(editor => (
+  previews.value[editor.resource]
+  && JSON.stringify(previews.value[editor.resource]) !== JSON.stringify(savedContent.value[editor.resource])
+)))
 const hasAnyChanges = computed(() => Object.entries(previews.value).some(([resource, content]) => (
   JSON.stringify(content) !== JSON.stringify(savedContent.value[resource])
 )))
+const editorContent = (resource: string) => previews.value[resource] || {}
+const isGroupOpen = (resource: string) => openGroups.value.includes(resource)
+const toggleGroup = (resource: string) => {
+  openGroups.value = isGroupOpen(resource)
+    ? openGroups.value.filter(item => item !== resource)
+    : [...openGroups.value, resource]
+}
+const nestedGroupKey = (resource: string, group: string) => `${resource}:${group}`
 
 const authenticatedRequest = async <T>(url: string, options: Parameters<typeof $fetch<T>>[1] = {}) => {
   return $fetch<T>(url, {
@@ -50,27 +61,34 @@ const loadEditor = async () => {
 }
 
 const loadPageContent = async () => {
-  const editor = activeEditor.value
-  if (!session.value || !editor || previews.value[editor.resource]) return
-  const data = await $fetch<HomeHeroEditorData>(`/api/admin/${editor.resource}`)
-  const content = { ...data.content } as Record<string, string>
-  savedContent.value[editor.resource] = { ...content }
-  previews.value[editor.resource] = content
+  if (!session.value) return
+  await Promise.all(activeEditors.value.map(async (editor) => {
+    if (previews.value[editor.resource]) return
+    const data = await $fetch<HomeHeroEditorData>(`/api/admin/${editor.resource}`)
+    const content = { ...data.content } as Record<string, string>
+    savedContent.value[editor.resource] = { ...content }
+    previews.value[editor.resource] = content
+  }))
 }
 
 const publish = async () => {
-  const editor = activeEditor.value
-  if (!editor || !activeContent.value) return
+  const changedEditors = activeEditors.value.filter(editor => (
+    previews.value[editor.resource]
+    && JSON.stringify(previews.value[editor.resource]) !== JSON.stringify(savedContent.value[editor.resource])
+  ))
+  if (!changedEditors.length) return
   isPublishing.value = true
   errorMessage.value = ''
   statusMessage.value = ''
   try {
-    const result = await authenticatedRequest<HomeHeroEditorData>(`/api/admin/${editor.resource}/publish`, {
-      method: 'POST',
-      body: activeContent.value
-    })
-    savedContent.value[editor.resource] = { ...result.content }
-    previews.value[editor.resource] = { ...result.content }
+    await Promise.all(changedEditors.map(async (editor) => {
+      const result = await authenticatedRequest<HomeHeroEditorData>(`/api/admin/${editor.resource}/publish`, {
+        method: 'POST',
+        body: previews.value[editor.resource]
+      })
+      savedContent.value[editor.resource] = { ...result.content }
+      previews.value[editor.resource] = { ...result.content }
+    }))
     statusMessage.value = 'Changes published'
   } catch (error: unknown) {
     const response = error as { data?: { statusMessage?: string } }
@@ -80,10 +98,10 @@ const publish = async () => {
   }
 }
 
-const uploadImage = async (event: Event, fieldKey: string) => {
+const uploadImage = async (event: Event, resource: string, fieldKey: string) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file || !activeContent.value) return
+  if (!file || !previews.value[resource]) return
   isUploading.value = true
   errorMessage.value = ''
   try {
@@ -93,7 +111,7 @@ const uploadImage = async (event: Event, fieldKey: string) => {
       method: 'POST',
       body: formData
     })
-    activeContent.value[fieldKey] = result.url
+    previews.value[resource][fieldKey] = result.url
     statusMessage.value = 'Image ready to publish'
   } catch (error: unknown) {
     const response = error as { data?: { statusMessage?: string } }
@@ -114,6 +132,11 @@ const signOut = async () => {
 
 onMounted(loadEditor)
 watch(() => route.path, loadPageContent)
+watch(activeEditors, (editors) => {
+  const activeResources = new Set(editors.map(editor => editor.resource))
+  openGroups.value = openGroups.value.filter(resource => activeResources.has(resource))
+  if (!openGroups.value.length && editors[0]) openGroups.value = [editors[0].resource]
+}, { immediate: true })
 </script>
 
 <template>
@@ -132,29 +155,93 @@ watch(() => route.path, loadPageContent)
 
       <p class="admin-sidebar__instructions">Preview changes live to the left, then publish for everyone else to see. Navigate to another page to edit it.</p>
 
-      <div v-if="activeEditor && activeContent" class="admin-sidebar__body">
-        <label v-for="field in activeEditor.fields" :key="field.key" :class="{ 'admin-sidebar__upload': field.type === 'image' }">
-          {{ field.label }}
-          <textarea
-            v-if="field.type === 'textarea'"
-            v-model="activeContent[field.key]"
-            :maxlength="field.maxLength"
-            :rows="field.rows || 4"
-          />
-          <input
-            v-else-if="field.type === 'text'"
-            v-model="activeContent[field.key]"
-            :maxlength="field.maxLength"
+      <div v-if="hasActiveContent" class="admin-sidebar__body">
+        <section v-for="editor in activeEditors" :key="editor.resource" class="editor-group">
+          <button
+            class="editor-group__toggle"
+            type="button"
+            :aria-expanded="isGroupOpen(editor.resource)"
+            :aria-controls="`editor-group-${editor.resource}`"
+            @click="toggleGroup(editor.resource)"
           >
-          <input
-            v-else
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            :disabled="isUploading"
-            @change="uploadImage($event, field.key)"
+            <span>{{ editor.label }}</span>
+            <i v-if="JSON.stringify(previews[editor.resource]) !== JSON.stringify(savedContent[editor.resource])" aria-label="Unpublished changes" />
+            <BaseIcon name="chevron-down" :size="18" />
+          </button>
+          <div
+            :id="`editor-group-${editor.resource}`"
+            class="editor-group__wrap"
+            :class="{ 'editor-group__wrap--open': isGroupOpen(editor.resource) }"
           >
-          <span v-if="field.help">{{ isUploading ? 'Uploading…' : field.help }}</span>
-        </label>
+            <div class="editor-group__fields">
+              <label v-for="field in editor.fields" :key="field.key" :class="{ 'admin-sidebar__upload': field.type === 'image' }">
+                {{ field.label }}
+                <textarea
+                  v-if="field.type === 'textarea'"
+                  v-model="editorContent(editor.resource)[field.key]"
+                  :maxlength="field.maxLength"
+                  :rows="field.rows || 4"
+                />
+                <select v-else-if="field.type === 'select'" v-model="editorContent(editor.resource)[field.key]">
+                  <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+                <input
+                  v-else-if="field.type === 'text' || field.type === 'color'"
+                  v-model="editorContent(editor.resource)[field.key]"
+                  :type="field.type"
+                  :maxlength="field.maxLength"
+                >
+                <input
+                  v-else
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  :disabled="isUploading"
+                  @change="uploadImage($event, editor.resource, field.key)"
+                >
+                <span v-if="field.help">{{ isUploading ? 'Uploading…' : field.help }}</span>
+              </label>
+
+              <section v-for="group in editor.groups" :key="group.key" class="editor-group editor-group--nested">
+                <button
+                  class="editor-group__toggle editor-group__toggle--nested"
+                  type="button"
+                  :aria-expanded="isGroupOpen(nestedGroupKey(editor.resource, group.key))"
+                  :aria-controls="`editor-group-${editor.resource}-${group.key}`"
+                  @click="toggleGroup(nestedGroupKey(editor.resource, group.key))"
+                >
+                  <span>{{ group.label }}</span>
+                  <BaseIcon name="chevron-down" :size="16" />
+                </button>
+                <div
+                  :id="`editor-group-${editor.resource}-${group.key}`"
+                  class="editor-group__wrap"
+                  :class="{ 'editor-group__wrap--open': isGroupOpen(nestedGroupKey(editor.resource, group.key)) }"
+                >
+                  <div class="editor-group__fields">
+                    <label v-for="field in group.fields" :key="field.key">
+                      {{ field.label }}
+                      <textarea
+                        v-if="field.type === 'textarea'"
+                        v-model="editorContent(editor.resource)[field.key]"
+                        :maxlength="field.maxLength"
+                        :rows="field.rows || 4"
+                      />
+                      <select v-else-if="field.type === 'select'" v-model="editorContent(editor.resource)[field.key]">
+                        <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+                      </select>
+                      <input
+                        v-else
+                        v-model="editorContent(editor.resource)[field.key]"
+                        :type="field.type"
+                        :maxlength="field.maxLength"
+                      >
+                    </label>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
 
         <p v-if="errorMessage" class="admin-sidebar__message admin-sidebar__message--error" role="alert">{{ errorMessage }}</p>
         <p v-else-if="statusMessage" class="admin-sidebar__message" role="status">{{ statusMessage }}</p>
@@ -203,7 +290,7 @@ watch(() => route.path, loadPageContent)
   min-height: 64px;
   padding: 0.7rem 0.8rem 0.7rem 1rem;
   align-items: center;
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: white;
   gap: 0.7rem;
 }
@@ -263,6 +350,98 @@ watch(() => route.path, loadPageContent)
   gap: 1rem;
 }
 
+.editor-group {
+  border: 1px solid #d8dfdd;
+  border-radius: 3px;
+  background: white;
+}
+
+.editor-group__toggle {
+  display: flex;
+  width: 100%;
+  min-height: 50px;
+  padding: 0.7rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  align-items: center;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: left;
+  gap: 0.55rem;
+}
+
+.editor-group__toggle span {
+  margin-right: auto;
+}
+
+.editor-group__toggle i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.editor-group__toggle svg {
+  transition: transform var(--transition-fast);
+}
+
+.editor-group__toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.editor-group--nested {
+  border-color: #e3e7e6;
+  border-radius: 2px;
+  background: #f8faf9;
+}
+
+.editor-group__toggle--nested {
+  min-height: 34px;
+  padding: 0.35rem 0.6rem;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.editor-group--nested > .editor-group__wrap > .editor-group__fields {
+  padding-inline: 0.65rem;
+  gap: 0.75rem;
+}
+
+.editor-group--nested > .editor-group__wrap--open > .editor-group__fields {
+  padding-top: 0.7rem;
+  padding-bottom: 0.75rem;
+}
+
+.editor-group__wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 250ms ease, opacity 180ms ease;
+}
+
+.editor-group__wrap--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.editor-group__fields {
+  display: grid;
+  min-height: 0;
+  padding: 0 0.85rem;
+  overflow: hidden;
+  gap: 1rem;
+}
+
+.editor-group__wrap--open > .editor-group__fields {
+  padding-bottom: 1rem;
+  border-top: 1px solid #e5e9e8;
+  padding-top: 1rem;
+}
+
 .admin-sidebar__body label {
   display: grid;
   font-size: 0.78rem;
@@ -271,7 +450,8 @@ watch(() => route.path, loadPageContent)
 }
 
 .admin-sidebar__body input:not([type='file']),
-.admin-sidebar__body textarea {
+.admin-sidebar__body textarea,
+.admin-sidebar__body select {
   width: 100%;
   padding: 0.7rem;
   border: 1px solid #bac4c1;
@@ -279,6 +459,11 @@ watch(() => route.path, loadPageContent)
   color: var(--color-text);
   font-size: 0.9rem;
   resize: vertical;
+}
+
+.admin-sidebar__body input[type='color'] {
+  min-height: 42px;
+  padding: 0.25rem;
 }
 
 .admin-sidebar__body input:focus,
