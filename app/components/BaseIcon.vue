@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  name: 'chevron-down'
+  name: 'chevron-down' | 'panel-close' | 'panel-open'
   size?: number
 }>()
 </script>
@@ -20,6 +20,22 @@ defineProps<{
       stroke-linecap="round"
       stroke-linejoin="round"
       stroke-width="2"
+    />
+    <path
+      v-else-if="name === 'panel-close'"
+      d="M4 5h16v14H4V5Zm10 0v14m-3-10-3 3 3 3"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1.8"
+    />
+    <path
+      v-else-if="name === 'panel-open'"
+      d="M4 5h16v14H4V5Zm6 0v14m3-10 3 3-3 3"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1.8"
     />
   </svg>
 </template>

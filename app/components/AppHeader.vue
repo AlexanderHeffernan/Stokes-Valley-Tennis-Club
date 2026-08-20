@@ -4,6 +4,8 @@ import { navigationItems } from '~/data/navigation'
 const route = useRoute()
 const isMenuOpen = ref(false)
 const openMobileDropdown = ref<string | null>(null)
+const adminSession = useState<object | null>('admin-session', () => null)
+const adminPanelOpen = useState('admin-panel-open', () => true)
 
 const isActive = (path: string) => {
   if (path === '/') return route.path === '/'
@@ -76,6 +78,16 @@ onBeforeUnmount(() => {
       <NuxtLink class="join-button join-button--desktop" to="/join">
         Join the Club
       </NuxtLink>
+
+      <button
+        v-if="adminSession && !adminPanelOpen"
+        class="admin-button"
+        type="button"
+        aria-label="Open editing panel"
+        @click="adminPanelOpen = true"
+      >
+        <BaseIcon name="panel-open" :size="24" />
+      </button>
 
       <button
         class="menu-toggle"
@@ -287,12 +299,31 @@ onBeforeUnmount(() => {
   padding: 0.65rem 1rem;
 }
 
+.admin-button {
+  display: grid;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+  place-items: center;
+}
+
+.admin-button:hover,
+.admin-button:focus-visible {
+  color: var(--color-secondary);
+  transform: translateY(-2px);
+}
+
 .menu-toggle,
 .mobile-menu {
   display: none;
 }
 
-@media (max-width: 1100px) {
+@container site-preview (max-width: 1100px) {
   .desktop-nav,
   .join-button--desktop {
     display: none;
@@ -338,9 +369,12 @@ onBeforeUnmount(() => {
   }
 
   .mobile-menu {
-    position: fixed;
-    inset: var(--header-height) 0 0;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
     display: block;
+    height: calc(100svh - var(--header-height));
     overflow-y: auto;
     background: var(--color-primary);
   }
