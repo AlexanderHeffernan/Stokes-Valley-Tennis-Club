@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:26-alpine AS builder
 
 RUN apk add --no-cache python3 make g++ sqlite-dev
 WORKDIR /app
@@ -15,7 +15,7 @@ COPY . .
 RUN npm run postinstall
 RUN npm run build
 
-FROM node:24-alpine AS runtime-dependencies
+FROM node:26-alpine AS runtime-dependencies
 
 RUN apk add --no-cache python3 make g++ sqlite-dev
 WORKDIR /app
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-FROM node:24-alpine
+FROM node:26-alpine
 
 RUN apk add --no-cache sqlite-libs
 WORKDIR /app
