@@ -96,6 +96,8 @@ npm run typecheck       # Run Nuxt/Vue TypeScript checks
 npm run build           # Create a production build
 npm run preview         # Preview the production build locally
 npm audit --omit=dev    # Audit production dependencies
+npm run audit:security # Enforce the time-limited security exception policy
+npm test               # Test the audit policy's acceptance/rejection boundaries
 ```
 
 The Docker build pins all stages to Node 24.22.1 Alpine, including native
@@ -165,9 +167,10 @@ exists as a future building block, but it is not scheduled.
 - **Build and Deploy** builds and publishes the ARM64 container image after a
   push to `main`. Despite the workflow name, it publishes the artifact; it does
   not connect to or deploy on the Raspberry Pi.
-- **Security** installs from the lockfile, audits production dependencies,
-  typechecks the application and runs CodeQL on pushes, pull requests and a
-  weekly schedule.
+- **Security** installs from the lockfile, audits production dependencies and
+  runs CodeQL on pushes, pull requests and a weekly schedule. An independent
+  validation job runs policy tests, typechecking and a production build, even
+  when the audit job fails.
 - **Dependabot** proposes weekly npm, GitHub Actions and Docker dependency
   updates. Major runtime/toolchain upgrades that are not currently supported
   are ignored.
@@ -176,10 +179,39 @@ Dependabot pull requests should be reviewed and tested individually. A green
 security check does not by itself prove that a major framework or runtime
 upgrade is safe.
 
+### Temporary audit exceptions
+
+`npm run audit:security` runs the production dependency audit and fails for
+unaccepted high/critical findings, audit errors or expired exceptions. The raw
+`npm audit --omit=dev` command remains available and still reports all findings.
+Two explicitly reviewed exceptions expire at **2026-11-22 00:00 UTC**:
+
+- [`GHSA-vfj7-8cjw-p6xm`](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
+  only for `braces@3.0.3`.
+- [`GHSA-86w9-cpqp-85rv`](https://github.com/advisories/GHSA-86w9-cpqp-85rv),
+  only for `node-forge@1.4.0`.
+
+These packages arrive through Nitro's file-scanning and development HTTPS
+tooling. Neither dependency chain was found in the generated production server
+bundle; an isolated output smoke test with both chains blocked passed public
+content, login and image upload/readback checks. The Docker image nevertheless
+ships them in its full root dependency tree. This supports limited risk
+acceptance, not a claim that the vulnerabilities are fixed or every possible
+execution path has been proved safe. Build inputs must remain trusted.
+
+The policy checks each underlying advisory and every reported installed copy's
+locked version, including causes inherited by Nuxt/Nitro. It does not exempt
+Nuxt, Nitro or either package from other advisories. Critical severity is never
+accepted. New advisories, changed affected versions and expiry require review;
+do not extend the date automatically. Remove exceptions when upstream patches
+become available. Runtime-image slimming is a separate follow-up requiring
+ARM64 SQLite/sharp compatibility checks.
+
 Recommended release process:
 
 1. Review the change and avoid committing runtime data or secrets.
-2. Run `npm ci`, `npm run typecheck`, `npm run build` and the production audit.
+2. Run `npm ci`, `npm test`, `npm run typecheck`, `npm run build` and
+   `npm run audit:security`; inspect raw audit findings as well.
 3. Merge to `main` and confirm the GitHub Actions image build succeeds.
 4. On the Raspberry Pi, run `scripts/deploy.sh`.
 5. Verify Docker health, `/api/health`, the public homepage, admin login and
