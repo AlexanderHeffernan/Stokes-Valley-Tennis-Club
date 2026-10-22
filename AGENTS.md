@@ -165,6 +165,8 @@ services, and verify both the target application and unaffected services.
 ## Dependency maintenance
 
 - Prefer supported LTS runtimes for production.
+- Use patched Node 24 LTS (at least 24.22.1); keep all Docker stages and
+  Node type definitions aligned with that runtime line.
 - Treat framework, runtime, TypeScript and persistence-library major versions
   as migrations requiring focused compatibility testing.
 - For Docker/runtime updates, build the production image for ARM64 and verify

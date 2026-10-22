@@ -64,7 +64,7 @@ does not replace club content or uploaded media.
 
 ### Requirements
 
-- Node.js 24
+- Node.js 24.22.1 or newer patched Node 24 LTS release (below Node 25)
 - npm
 
 Install the exact dependency versions from the lockfile:
@@ -97,6 +97,12 @@ npm run build           # Create a production build
 npm run preview         # Preview the production build locally
 npm audit --omit=dev    # Audit production dependencies
 ```
+
+The Docker build pins all stages to Node 24.22.1 Alpine, including native
+dependency installation. Keep that patch version current with Node security
+releases; the npm engine constraint and Node type definitions also target 24 LTS.
+Audit counts describe dependency advisories (including framework tooling), not
+confirmed exploitable paths in the deployed application.
 
 ## Configuration
 
