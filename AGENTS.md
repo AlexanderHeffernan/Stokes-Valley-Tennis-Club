@@ -44,9 +44,10 @@ Use the lockfile and avoid unnecessary dependency churn:
 
 ```bash
 npm ci
+npm test
 npm run typecheck
 npm run build
-npm audit --omit=dev --audit-level=high
+npm run audit:security
 ```
 
 For a small documentation-only change, `git diff --check` is sufficient unless
@@ -165,6 +166,8 @@ services, and verify both the target application and unaffected services.
 ## Dependency maintenance
 
 - Prefer supported LTS runtimes for production.
+- Use patched Node 24 LTS (at least 24.22.1); keep all Docker stages and
+  Node type definitions aligned with that runtime line.
 - Treat framework, runtime, TypeScript and persistence-library major versions
   as migrations requiring focused compatibility testing.
 - For Docker/runtime updates, build the production image for ARM64 and verify
@@ -175,6 +178,11 @@ services, and verify both the target application and unaffected services.
   production architecture.
 - Keep Dependabot ignore rules narrowly scoped and revisit them when the
   surrounding toolchain supports the deferred upgrade.
+- `scripts/audit-dependencies.mjs` contains explicitly approved, advisory- and
+  version-scoped exceptions expiring on 2026-11-22 at 00:00 UTC. Keep raw audit
+  findings visible. Do not broaden or renew exceptions without explicit approval;
+  remove them when patched dependencies become available. New high/critical
+  advisories, critical severity and expired exceptions must fail CI.
 
 ## Documentation
 
